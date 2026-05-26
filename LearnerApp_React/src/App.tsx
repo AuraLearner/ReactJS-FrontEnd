@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Navbar from './components/Navbar';
 import type { ScreenId } from './components/Navbar';
@@ -11,6 +11,8 @@ import Assessment from './screens/Assessment';
 import AiPrediction from './screens/AiPrediction';
 import Analytics from './screens/Analytics';
 import Notifications from './screens/Notifications';
+import { clearAuthSession, getStoredRole, getStoredToken } from './utils/api';
+import { getHomeScreenForRole, getSessionRole, isScreenAccessible } from './utils/rbac';
 
 const pageTransition = {
   initial: { opacity: 0, y: 8 },
@@ -18,12 +20,49 @@ const pageTransition = {
   exit: { opacity: 0, y: -8, transition: { duration: 0.15 } },
 };
 
+function resolveScreenFromRole(role: string): ScreenId {
+  return getHomeScreenForRole(role);
+}
+
+function getInitialScreen(): ScreenId {
+  const token = getStoredToken();
+
+  if (!token) {
+    return 'login';
+  }
+
+  return resolveScreenFromRole(getStoredRole());
+}
+
 export default function App() {
-  const [activeScreen, setActiveScreen] = useState<ScreenId>('login');
+  const [activeScreen, setActiveScreen] = useState<ScreenId>(getInitialScreen);
+  const token = getStoredToken();
+  const role = getStoredRole();
+
+  useEffect(() => {
+    const sessionRole = getSessionRole();
+
+    if (!token) {
+      if (activeScreen !== 'login') {
+        setActiveScreen('login');
+      }
+
+      return;
+    }
+
+    if (activeScreen === 'login' || !isScreenAccessible(activeScreen, sessionRole, token)) {
+      setActiveScreen(getHomeScreenForRole(sessionRole));
+    }
+  }, [activeScreen, role, token]);
+
+  const handleLogout = () => {
+    clearAuthSession();
+    setActiveScreen('login');
+  };
 
   const renderScreen = () => {
     switch (activeScreen) {
-      case 'login': return <LoginScreen />;
+      case 'login': return <LoginScreen onLoginSuccess={setActiveScreen} />;
       case 'admin': return <AdminDashboard onNavigate={setActiveScreen} />;
       case 'addlearner': return <AddLearner />;
       case 'csvupload': return <CsvUpload />;
@@ -37,7 +76,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-crust">
-      <Navbar activeScreen={activeScreen} onNavigate={setActiveScreen} />
+      <Navbar activeScreen={activeScreen} onNavigate={setActiveScreen} onLogout={handleLogout} />
       <AnimatePresence mode="wait">
         <motion.main
           key={activeScreen}

@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   SignIn, ChartBar, UserPlus, UploadSimple, ChalkboardTeacher,
-  Exam, Brain, ChartLine, Bell, List, X
+  Exam, Brain, ChartLine, Bell, List, X, SignOut
 } from '@phosphor-icons/react';
+import { getStoredRole, getStoredToken } from '../utils/api';
+import { getVisibleScreensForRole } from '../utils/rbac';
 
 export type ScreenId =
   | 'login' | 'admin' | 'addlearner' | 'csvupload' | 'mentor'
@@ -24,9 +26,13 @@ const tabs: NavTab[] = [
 ];
 
 interface NavbarProps { activeScreen: ScreenId; onNavigate: (id: ScreenId) => void; }
+interface NavbarProps { activeScreen: ScreenId; onNavigate: (id: ScreenId) => void; onLogout: () => void; }
 
-export default function Navbar({ activeScreen, onNavigate }: NavbarProps) {
+export default function Navbar({ activeScreen, onNavigate, onLogout }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const token = getStoredToken();
+  const sessionRole = getStoredRole();
+  const visibleTabs = token ? getVisibleScreensForRole(sessionRole) : ['login'];
 
   return (
     <nav className="sticky top-0 z-50 bg-crust/80 backdrop-blur-2xl border-b border-surface0/50">
@@ -44,7 +50,7 @@ export default function Navbar({ activeScreen, onNavigate }: NavbarProps) {
 
           {/* Desktop Tabs */}
           <div className="hidden lg:flex items-center gap-1.5">
-            {tabs.map((tab) => (
+            {tabs.filter((tab) => visibleTabs.includes(tab.id)).map((tab) => (
               <motion.button key={tab.id} onClick={() => onNavigate(tab.id)}
                 className={`group flex items-center px-3.5 py-2.5 rounded-xl text-[13px] font-medium cursor-pointer transition-all duration-300 ${
                   activeScreen === tab.id
@@ -62,6 +68,18 @@ export default function Navbar({ activeScreen, onNavigate }: NavbarProps) {
                 </span>
               </motion.button>
             ))}
+            {token ? (
+              <motion.button
+                type="button"
+                onClick={onLogout}
+                className="ml-2 flex items-center gap-2 rounded-xl border border-red/20 bg-red/10 px-4 py-2.5 text-sm font-semibold text-red-100 transition-colors hover:border-red/30 hover:bg-red/15"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                <SignOut size={16} />
+                Logout
+              </motion.button>
+            ) : null}
           </div>
 
           {/* Mobile Menu Button */}
@@ -78,8 +96,8 @@ export default function Navbar({ activeScreen, onNavigate }: NavbarProps) {
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }}
             className="lg:hidden border-t border-surface0/50 overflow-hidden">
-            <div className="px-5 py-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {tabs.map((tab) => (
+            <div className="px-4 sm:px-5 py-4 grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-2">
+              {tabs.filter((tab) => visibleTabs.includes(tab.id)).map((tab) => (
                 <button key={tab.id}
                   onClick={() => { onNavigate(tab.id); setMobileOpen(false); }}
                   className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-[13px] font-medium transition-all ${
@@ -91,6 +109,16 @@ export default function Navbar({ activeScreen, onNavigate }: NavbarProps) {
                   <span>{tab.label}</span>
                 </button>
               ))}
+              {token ? (
+                <button
+                  type="button"
+                  onClick={() => { onLogout(); setMobileOpen(false); }}
+                  className="col-span-full flex items-center justify-center gap-2 rounded-xl border border-red/20 bg-red/10 px-4 py-3 text-[13px] font-semibold text-red-100 transition-colors hover:border-red/30 hover:bg-red/15"
+                >
+                  <SignOut size={16} />
+                  Logout
+                </button>
+              ) : null}
             </div>
           </motion.div>
         )}

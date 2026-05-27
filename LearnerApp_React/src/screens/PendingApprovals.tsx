@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, Clock, X, Info } from '@phosphor-icons/react';
 import SectionHeader from '../components/SectionHeader';

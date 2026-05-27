@@ -26,7 +26,7 @@ const mentorOptions = [
 
 const defaultForm = {
   name: 'Rahul Sharma',
-  userId: '',
+  email: '',
   batch: 'JAVA_FS_2026',
   mentorId: '1',
   attendance: '88',
@@ -37,7 +37,7 @@ const defaultForm = {
 
 type LearnerPayload = {
   name: string;
-  userId?: number;
+  email?: string;
   batch: string;
   mentorId: number;
   attendance: number;
@@ -48,6 +48,7 @@ type LearnerPayload = {
 
 type SavedLearner = LearnerPayload & {
   learnerId?: number;
+  tempPassword?: string;
 };
 
 export default function AddLearner() {
@@ -97,8 +98,8 @@ export default function AddLearner() {
         communicationScore: Number(form.communicationScore),
       };
 
-      if (form.userId.trim()) {
-        payload.userId = Number(form.userId);
+      if (form.email.trim()) {
+        payload.email = form.email.trim();
       }
 
       const savedLearner = await apiRequest<SavedLearner>('/api/learners', {
@@ -106,7 +107,12 @@ export default function AddLearner() {
         body: payload,
       });
 
-      setMessage(`Saved ${savedLearner.name ?? payload.name} · learner #${savedLearner.learnerId ?? 'pending'}`);
+      let successMsg = `Saved ${savedLearner.name ?? payload.name} · learner #${savedLearner.learnerId ?? 'pending'}`;
+      if (savedLearner.tempPassword) {
+        successMsg += `\nAccount Created. Temp Password: ${savedLearner.tempPassword}`;
+      }
+      
+      setMessage(successMsg);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Unable to save learner');
     } finally {
@@ -136,8 +142,8 @@ export default function AddLearner() {
                 <input className={inputCls} value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="Rahul Sharma" />
               </div>
               <div>
-                <label className={labelCls}><IdentificationCard size={14} weight="bold" />User ID (optional)</label>
-                <input type="number" className={inputCls} value={form.userId} onChange={(event) => setForm((prev) => ({ ...prev, userId: event.target.value }))} placeholder="101" />
+                <label className={labelCls}><IdentificationCard size={14} weight="bold" />Email Address</label>
+                <input type="email" className={inputCls} value={form.email} onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))} placeholder="rahul@example.com" />
               </div>
               <div>
                 <label className={labelCls}><BookOpen size={14} weight="bold" />Assign Batch</label>
@@ -170,7 +176,7 @@ export default function AddLearner() {
               </button>
             </div>
             {message || error ? (
-              <div className={`mt-6 rounded-xl border px-4 py-3 text-sm ${error ? 'border-red/20 bg-red/10 text-red-200' : 'border-green/20 bg-green/10 text-green'}`}>
+              <div className={`mt-6 rounded-xl border px-4 py-3 text-sm whitespace-pre-wrap font-mono ${error ? 'border-red/20 bg-red/10 text-red-200' : 'border-green/20 bg-green/10 text-green'}`}>
                 {error ?? message}
               </div>
             ) : null}
@@ -185,9 +191,9 @@ export default function AddLearner() {
             <h2 className="font-display text-xl font-bold mb-8">Learner Preview</h2>
             <div className="flex items-center gap-4 mb-8">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue/20 to-mauve/20 border border-blue/20 text-blue text-lg font-bold flex items-center justify-center shrink-0">{previewInitials}</div>
-              <div>
-                <div className="text-lg font-semibold text-text">{form.name}</div>
-                <div className="text-xs text-overlay0 font-mono mt-1">{form.userId ? `User ID ${form.userId}` : 'User ID optional'}</div>
+              <div className="overflow-hidden">
+                <div className="text-lg font-semibold text-text truncate">{form.name}</div>
+                <div className="text-xs text-overlay0 font-mono mt-1 truncate">{form.email ? form.email : 'No email provided'}</div>
               </div>
             </div>
             <div className="flex gap-2.5 flex-wrap mb-8"><Badge variant="blue">{form.batch}</Badge><Badge variant="green">{selectedMentor?.name ?? 'Mentor'}</Badge></div>

@@ -37,7 +37,7 @@ export default function Settings() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ oldPassword, newPassword }),
+        body: { oldPassword, newPassword },
       });
       setMessage('Your password has been successfully changed.');
       setOldPassword('');

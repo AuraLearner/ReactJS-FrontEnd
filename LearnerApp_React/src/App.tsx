@@ -75,7 +75,7 @@ export default function App() {
       case 'assessment': return <Assessment />;
       case 'prediction': return <AiPrediction />;
       case 'analytics': return <Analytics />;
-      case 'notifications': return <Notifications />;
+      case 'notifications': return <Notifications onNavigate={setActiveScreen} />;
       case 'learner': return <LearnerDashboard />;
       case 'assignments': return <Assignments />;
       case 'settings': return <Settings />;

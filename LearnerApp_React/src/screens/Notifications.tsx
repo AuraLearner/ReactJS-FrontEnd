@@ -18,6 +18,7 @@ type NotificationItem = {
   time: string;
   badge: string;
   v: 'blue' | 'green' | 'amber' | 'mauve';
+  targetScreen?: string;
 };
 
 const initialNotifications: NotificationItem[] = [];
@@ -29,13 +30,13 @@ const events = [
   { name: 'Batch Activity', desc: 'Review the latest activity across your batch.', dot: 'bg-peach', glow: 'shadow-[0_0_8px_rgba(250,179,135,0.4)]' },
 ];
 
-export default function Notifications() {
+export default function Notifications({ onNavigate }: { onNavigate?: (screen: any) => void }) {
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
-  const addNotif = (icon: ReactNode, title: string, v: 'blue' | 'green' | 'amber' | 'mauve', badge: string) => {
-    const newItem = { icon, title, time: new Date().toLocaleTimeString(), badge, v };
+  const addNotif = (icon: ReactNode, title: string, v: 'blue' | 'green' | 'amber' | 'mauve', badge: string, targetScreen?: string) => {
+    const newItem = { icon, title, time: new Date().toLocaleTimeString(), badge, v, targetScreen };
     setNotifications((prev) => [newItem, ...prev].slice(0, 10)); // Keep last 10
   };
 
@@ -84,7 +85,8 @@ export default function Notifications() {
               title,
               time: new Date(n.created_at).toLocaleTimeString(),
               badge: isNewRegistration ? 'Admin' : isAssessment ? 'New' : isFeedback ? 'Feedback' : 'Event',
-              v: isNewRegistration || isAssessment ? 'blue' : isFeedback ? 'amber' : 'green'
+              v: isNewRegistration || isAssessment ? 'blue' : isFeedback ? 'amber' : 'green',
+              targetScreen: isNewRegistration ? 'pending' : undefined
             };
           });
           
@@ -117,7 +119,7 @@ export default function Notifications() {
     socket.on('connect_error', handleConnectError);
 
     // Listen to real-time events from Spring Boot (via NodeJS)
-    socket.on('newRegistration', (data) => addNotif(<Bell size={18} weight="duotone" className="text-blue" />, `New Registration: ${data.message || 'Learner awaiting approval'}`, 'blue', 'Admin'));
+    socket.on('newRegistration', (data) => addNotif(<Bell size={18} weight="duotone" className="text-blue" />, `New Registration: ${data.message || 'Learner awaiting approval'}`, 'blue', 'Admin', 'pending'));
     socket.on('newAssessment', (data) => addNotif(<Bell size={18} weight="duotone" className="text-blue" />, `New Assessment: ${data.type || 'Added'}`, 'blue', 'New'));
     socket.on('scoreUpdated', (data) => addNotif(<Lightning size={18} weight="duotone" className="text-green" />, `Score Updated for Learner ${data.learnerId || ''}`, 'green', 'Score'));
     socket.on('predictionGenerated', (data) => addNotif(<Brain size={18} weight="duotone" className="text-mauve" />, `Prediction updated: ${data.status || 'Ready'}`, 'mauve', 'AI'));
@@ -157,12 +159,13 @@ export default function Notifications() {
           <div className="space-y-2">
             {notifications.length > 0 ? notifications.map((n, i) => (
               <motion.div key={i}
-                className="flex gap-4 lg:gap-5 items-start p-4 lg:p-5 rounded-2xl hover:bg-base/50 transition-all"
+                onClick={() => { if (n.targetScreen && onNavigate) onNavigate(n.targetScreen); }}
+                className={`flex gap-4 lg:gap-5 items-start p-4 lg:p-5 rounded-2xl transition-all ${n.targetScreen ? 'cursor-pointer hover:bg-surface0/60 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:-translate-y-0.5 border border-transparent hover:border-surface1' : 'hover:bg-base/50'}`}
                 initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.12, duration: 0.35 }}>
-                <div className="w-10 h-10 rounded-xl bg-surface0/40 flex items-center justify-center shrink-0">{n.icon}</div>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${n.targetScreen ? 'bg-blue/10 text-blue' : 'bg-surface0/40'}`}>{n.icon}</div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-text font-medium leading-relaxed">{n.title}</p>
+                  <p className={`text-sm font-medium leading-relaxed ${n.targetScreen ? 'text-text group-hover:text-blue transition-colors' : 'text-text'}`}>{n.title}</p>
                   <p className="text-[10px] text-overlay0 font-mono mt-2 tracking-wide">{n.time}</p>
                 </div>
                 <Badge variant={n.v}>{n.badge}</Badge>

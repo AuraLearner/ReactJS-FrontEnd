@@ -10,7 +10,7 @@ const HOME_SCREEN_BY_ROLE: Record<AppRole, ScreenId> = {
 };
 
 const VISIBLE_SCREENS_BY_ROLE: Record<AppRole, ScreenId[]> = {
-  ADMIN: ['admin', 'addlearner', 'csvupload', 'mentor', 'assessment', 'prediction', 'analytics', 'notifications', 'settings'],
+  ADMIN: ['admin', 'addlearner', 'pending', 'csvupload', 'mentor', 'assessment', 'prediction', 'analytics', 'notifications', 'settings'],
   MENTOR: ['mentor', 'assessment', 'prediction', 'analytics', 'notifications', 'settings'],
   LEARNER: ['learner', 'assignments', 'prediction', 'notifications', 'settings'],
 };

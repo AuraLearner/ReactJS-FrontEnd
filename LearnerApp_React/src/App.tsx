@@ -14,6 +14,7 @@ import Notifications from './screens/Notifications';
 import LearnerDashboard from './screens/LearnerDashboard';
 import Assignments from './screens/Assignments';
 import Settings from './screens/Settings';
+import PendingApprovals from './screens/PendingApprovals';
 import { clearAuthSession, getStoredRole, getStoredToken } from './utils/api';
 import { getHomeScreenForRole, getSessionRole, isScreenAccessible } from './utils/rbac';
 
@@ -68,6 +69,7 @@ export default function App() {
       case 'login': return <LoginScreen onLoginSuccess={setActiveScreen} />;
       case 'admin': return <AdminDashboard onNavigate={setActiveScreen} />;
       case 'addlearner': return <AddLearner />;
+      case 'pending': return <PendingApprovals />;
       case 'csvupload': return <CsvUpload />;
       case 'mentor': return <MentorDashboard />;
       case 'assessment': return <Assessment />;

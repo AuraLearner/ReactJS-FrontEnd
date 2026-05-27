@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   SignIn, ChartBar, UserPlus, UploadSimple, ChalkboardTeacher,
-  Exam, Brain, ChartLine, Bell, List, X, SignOut, Student, ClipboardText, Gear
+  Exam, Brain, ChartLine, Bell, List, X, SignOut, Student, ClipboardText, Gear, Clock
 } from '@phosphor-icons/react';
 import { getStoredRole, getStoredToken } from '../utils/api';
 import { getVisibleScreensForRole } from '../utils/rbac';
 
 export type ScreenId =
-  | 'login' | 'admin' | 'addlearner' | 'csvupload' | 'mentor'
+  | 'login' | 'admin' | 'addlearner' | 'pending' | 'csvupload' | 'mentor'
   | 'assessment' | 'prediction' | 'analytics' | 'notifications'
   | 'learner' | 'assignments' | 'settings';
 
@@ -17,6 +17,7 @@ interface NavTab { id: ScreenId; label: string; icon: React.ReactNode; }
 const tabs: NavTab[] = [
   { id: 'login', label: 'Login', icon: <SignIn size={16} /> },
   { id: 'admin', label: 'Dashboard', icon: <ChartBar size={16} /> },
+  { id: 'pending', label: 'Approvals', icon: <Clock size={16} /> },
   { id: 'addlearner', label: 'Add Learner', icon: <UserPlus size={16} /> },
   { id: 'csvupload', label: 'CSV Upload', icon: <UploadSimple size={16} /> },
   { id: 'mentor', label: 'Mentor', icon: <ChalkboardTeacher size={16} /> },

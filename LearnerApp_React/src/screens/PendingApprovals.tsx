@@ -253,21 +253,21 @@ export default function PendingApprovals() {
                         <select
                           value={batch}
                           onChange={(e) => setBatch(e.target.value)}
-                          className="w-full bg-surface0/30 border border-surface1/60 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue/50 focus:ring-2 focus:ring-blue/20 transition-all appearance-none cursor-pointer"
+                          className="w-full bg-surface0/30 text-text border border-surface1/60 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue/50 focus:ring-2 focus:ring-blue/20 transition-all appearance-none cursor-pointer"
                           required
                         >
-                          <option value="" disabled>Select a batch</option>
+                          <option value="" disabled className="bg-base text-overlay0">Select a batch</option>
                           {availableBatches.map(b => (
-                            <option key={b} value={b}>{b}</option>
+                            <option key={b} value={b} className="bg-base text-text">{b}</option>
                           ))}
-                          <option value="NEW_BATCH">-- Create New Batch --</option>
+                          <option value="NEW_BATCH" className="bg-base text-blue font-semibold">-- Create New Batch --</option>
                         </select>
                         {batch === 'NEW_BATCH' && (
                           <input
                             type="text"
                             value={customBatch}
                             onChange={(e) => setCustomBatch(e.target.value)}
-                            className="w-full mt-3 bg-surface0/30 border border-surface1/60 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue/50 focus:ring-2 focus:ring-blue/20 transition-all"
+                            className="w-full mt-3 bg-surface0/30 text-text border border-surface1/60 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue/50 focus:ring-2 focus:ring-blue/20 transition-all"
                             placeholder="Type new batch name"
                             required
                           />
@@ -278,11 +278,11 @@ export default function PendingApprovals() {
                         <select
                           value={mentorId}
                           onChange={(e) => setMentorId(e.target.value)}
-                          className="w-full bg-surface0/30 border border-surface1/60 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue/50 focus:ring-2 focus:ring-blue/20 transition-all appearance-none cursor-pointer"
+                          className="w-full bg-surface0/30 text-text border border-surface1/60 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue/50 focus:ring-2 focus:ring-blue/20 transition-all appearance-none cursor-pointer"
                         >
-                          <option value="">No Mentor (Optional)</option>
+                          <option value="" className="bg-base text-overlay0">No Mentor (Optional)</option>
                           {availableMentors.map(m => (
-                            <option key={m.id} value={m.id.toString()}>{m.name} (ID: {m.id})</option>
+                            <option key={m.id} value={m.id.toString()} className="bg-base text-text">{m.name} (ID: {m.id})</option>
                           ))}
                         </select>
                       </div>

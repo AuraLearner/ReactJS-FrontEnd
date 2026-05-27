@@ -27,7 +27,7 @@ export default function PendingApprovals() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<PendingUser | null>(null);
-  
+
   // Form State
   const [batch, setBatch] = useState('');
   const [mentorId, setMentorId] = useState('');
@@ -36,9 +36,14 @@ export default function PendingApprovals() {
   const [aptitudeScore, setAptitudeScore] = useState('0');
   const [communicationScore, setCommunicationScore] = useState('0');
   
+  const [customBatch, setCustomBatch] = useState('');
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const [availableMentors, setAvailableMentors] = useState<{id: number, name: string}[]>([]);
+  const [availableBatches, setAvailableBatches] = useState<string[]>([]);
 
   const fetchPending = async () => {
     setIsLoading(true);
@@ -52,15 +57,34 @@ export default function PendingApprovals() {
     }
   };
 
+  const fetchDropdownData = async () => {
+    try {
+      const mentors = await apiRequest<{id: number, name: string}[]>('/api/users/mentors');
+      setAvailableMentors(mentors);
+    } catch (err) {
+      console.error('Failed to fetch mentors', err);
+    }
+    
+    try {
+      const batches = await apiRequest<string[]>('/api/learners/batches');
+      setAvailableBatches(batches);
+    } catch (err) {
+      console.error('Failed to fetch batches', err);
+    }
+  };
+
   useEffect(() => {
     void fetchPending();
+    void fetchDropdownData();
   }, []);
 
   const handleApprove = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) return;
-    
-    if (!batch.trim()) {
+
+    const finalBatch = batch === 'NEW_BATCH' ? customBatch.trim() : batch.trim();
+
+    if (!finalBatch) {
       setFormError('Batch name is required.');
       return;
     }
@@ -70,7 +94,7 @@ export default function PendingApprovals() {
     setSuccessMsg(null);
 
     const payload = {
-      batch: batch.trim(),
+      batch: finalBatch,
       mentorId: mentorId ? Number(mentorId) : null,
       attendance: Number(attendance),
       codingScore: Number(codingScore),
@@ -83,16 +107,21 @@ export default function PendingApprovals() {
         method: 'POST',
         body: payload,
       });
-      
+
       setSuccessMsg(`${selectedUser.name} has been successfully approved!`);
       setPendingUsers(prev => prev.filter(u => u.id !== selectedUser.id));
-      
+
+      if (batch === 'NEW_BATCH' && !availableBatches.includes(finalBatch)) {
+        setAvailableBatches(prev => [...prev, finalBatch]);
+      }
+
       // Close modal after delay
       setTimeout(() => {
         setSelectedUser(null);
         setSuccessMsg(null);
         // Reset form
         setBatch('');
+        setCustomBatch('');
         setMentorId('');
         setAttendance('0');
         setCodingScore('0');
@@ -102,10 +131,10 @@ export default function PendingApprovals() {
     } catch (err) {
       if (err instanceof Error) {
         if (err.message.includes('409') || err.message.toLowerCase().includes('already reviewed')) {
-            setFormError('This learner has already been reviewed and accepted by another administrator.');
-            setPendingUsers(prev => prev.filter(u => u.id !== selectedUser.id));
+          setFormError('This learner has already been reviewed and accepted by another administrator.');
+          setPendingUsers(prev => prev.filter(u => u.id !== selectedUser.id));
         } else {
-            setFormError(err.message);
+          setFormError(err.message);
         }
       } else {
         setFormError('An unexpected error occurred.');
@@ -118,12 +147,12 @@ export default function PendingApprovals() {
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 py-10 lg:py-14">
       <motion.div variants={itemVariants} className="flex justify-between items-end mb-8">
-        <SectionHeader 
-          moduleLabel="ADMINISTRATION" 
-          title="Pending Approvals" 
-          subtitle="Review and assign academic profiles to self-registered learners." 
+        <SectionHeader
+          moduleLabel="ADMINISTRATION"
+          title="Pending Approvals"
+          subtitle="Review and assign academic profiles to self-registered learners."
         />
-        <button 
+        <button
           onClick={fetchPending}
           className="text-sm font-semibold text-blue hover:text-blue/80 transition-colors"
         >
@@ -150,7 +179,7 @@ export default function PendingApprovals() {
         <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           <AnimatePresence>
             {pendingUsers.map(user => (
-              <motion.div 
+              <motion.div
                 key={user.id}
                 layout
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -182,16 +211,16 @@ export default function PendingApprovals() {
       <AnimatePresence>
         {selectedUser && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               onClick={() => !isSubmitting && setSelectedUser(null)}
-              className="absolute inset-0 bg-crust/80 backdrop-blur-sm" 
+              className="absolute inset-0 bg-crust/80 backdrop-blur-sm"
             />
-            <motion.div 
-              initial={{ opacity: 0, y: 20, scale: 0.95 }} 
-              animate={{ opacity: 1, y: 0, scale: 1 }} 
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               className="relative w-full max-w-xl bg-base border border-surface1 rounded-2xl shadow-2xl overflow-hidden"
             >
@@ -200,8 +229,8 @@ export default function PendingApprovals() {
                   <h3 className="font-display text-xl font-bold text-text">Approve Learner</h3>
                   <p className="text-xs text-subtext0 mt-1 font-mono">{selectedUser.name} · {selectedUser.email}</p>
                 </div>
-                <button 
-                  onClick={() => setSelectedUser(null)} 
+                <button
+                  onClick={() => setSelectedUser(null)}
                   disabled={isSubmitting}
                   className="p-2 text-overlay0 hover:text-text hover:bg-surface0 rounded-xl transition-colors disabled:opacity-50"
                 >
@@ -221,24 +250,41 @@ export default function PendingApprovals() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
                         <label className="block text-[13px] font-semibold text-subtext1 mb-2">Batch Assignment</label>
-                        <input
-                          type="text"
+                        <select
                           value={batch}
                           onChange={(e) => setBatch(e.target.value)}
-                          className="w-full bg-surface0/30 border border-surface1/60 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue/50 focus:ring-2 focus:ring-blue/20 transition-all"
-                          placeholder="e.g. 2024-A"
+                          className="w-full bg-surface0/30 border border-surface1/60 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue/50 focus:ring-2 focus:ring-blue/20 transition-all appearance-none cursor-pointer"
                           required
-                        />
+                        >
+                          <option value="" disabled>Select a batch</option>
+                          {availableBatches.map(b => (
+                            <option key={b} value={b}>{b}</option>
+                          ))}
+                          <option value="NEW_BATCH">-- Create New Batch --</option>
+                        </select>
+                        {batch === 'NEW_BATCH' && (
+                          <input
+                            type="text"
+                            value={customBatch}
+                            onChange={(e) => setCustomBatch(e.target.value)}
+                            className="w-full mt-3 bg-surface0/30 border border-surface1/60 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue/50 focus:ring-2 focus:ring-blue/20 transition-all"
+                            placeholder="Type new batch name"
+                            required
+                          />
+                        )}
                       </div>
                       <div>
-                        <label className="block text-[13px] font-semibold text-subtext1 mb-2">Mentor ID (Optional)</label>
-                        <input
-                          type="number"
+                        <label className="block text-[13px] font-semibold text-subtext1 mb-2">Assign Mentor</label>
+                        <select
                           value={mentorId}
                           onChange={(e) => setMentorId(e.target.value)}
-                          className="w-full bg-surface0/30 border border-surface1/60 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue/50 focus:ring-2 focus:ring-blue/20 transition-all"
-                          placeholder="Mentor ID"
-                        />
+                          className="w-full bg-surface0/30 border border-surface1/60 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue/50 focus:ring-2 focus:ring-blue/20 transition-all appearance-none cursor-pointer"
+                        >
+                          <option value="">No Mentor (Optional)</option>
+                          {availableMentors.map(m => (
+                            <option key={m.id} value={m.id.toString()}>{m.name} (ID: {m.id})</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 
@@ -268,15 +314,15 @@ export default function PendingApprovals() {
                     )}
 
                     <div className="pt-4 flex items-center justify-end gap-3 border-t border-surface0/50">
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={() => setSelectedUser(null)}
                         className="px-5 py-2.5 rounded-xl text-sm font-semibold text-subtext0 hover:text-text transition-colors"
                       >
                         Cancel
                       </button>
-                      <button 
-                        type="submit" 
+                      <button
+                        type="submit"
                         disabled={isSubmitting}
                         className="bg-blue text-crust font-bold text-sm px-6 py-2.5 rounded-xl hover:shadow-[0_4px_15px_rgba(137,180,250,0.3)] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
                       >

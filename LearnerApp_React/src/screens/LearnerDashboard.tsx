@@ -114,9 +114,22 @@ export default function LearnerDashboard() {
   }
 
   if (error || !learner) {
+    const isNotFound = error?.includes('404');
+    
     return (
       <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 py-20 text-center">
-        <div className="text-red font-mono text-sm">{error ?? 'No learner profile found'}</div>
+        {isNotFound ? (
+          <Card className="max-w-2xl mx-auto py-16">
+            <Student size={48} weight="duotone" className="mx-auto mb-4 text-overlay0" />
+            <h2 className="font-display text-2xl font-bold mb-2">Profile Pending Setup</h2>
+            <p className="text-sm text-subtext0 max-w-md mx-auto">
+              Your account has been created, but your academic profile hasn't been configured yet. 
+              Please wait for an Administrator or Mentor to assign your batch and upload your initial assessment scores.
+            </p>
+          </Card>
+        ) : (
+          <div className="text-red font-mono text-sm">{error ?? 'No learner profile found'}</div>
+        )}
       </div>
     );
   }

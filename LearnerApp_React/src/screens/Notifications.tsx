@@ -49,7 +49,7 @@ export default function Notifications({ onNavigate }: { onNavigate?: (screen: an
     e.stopPropagation(); // prevent navigation
     setNotifications(prev => prev.filter(n => n.id !== id));
     
-    if (typeof id === 'number') {
+    if (!String(id).startsWith('local_')) {
       try {
         await fetch(`https://auralearnernotifications.azaken.com/notifications/${id}`, { method: 'DELETE' });
       } catch (err) {
@@ -59,7 +59,7 @@ export default function Notifications({ onNavigate }: { onNavigate?: (screen: an
   };
 
   const handleNotificationClick = async (n: NotificationItem) => {
-    if (!n.isRead && typeof n.id === 'number') {
+    if (!n.isRead && !String(n.id).startsWith('local_')) {
       setNotifications(prev => prev.map(p => p.id === n.id ? { ...p, isRead: true } : p));
       try {
         await fetch(`https://auralearnernotifications.azaken.com/notifications/${n.id}/read`, { method: 'PATCH' });

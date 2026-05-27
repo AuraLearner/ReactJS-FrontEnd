@@ -8,12 +8,12 @@ import { apiRequest } from '../utils/api';
 const cV = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const iV = { hidden: { opacity: 0, y: 18 }, visible: { opacity: 1, y: 0, transition: { duration: 0.45 } } };
 
-const csvHeader = 'userId,name,batch,mentorId,attendance,codingScore,aptitudeScore,communicationScore';
+const csvHeader = 'email,name,batch,mentorId,attendance,codingScore,aptitudeScore,communicationScore';
 
 const csvExampleRows = [
-  '1,Rahul Sharma,JAVA_FS_2026,1,88,75,72,70',
-  '2,Priya Patel,REACT_2026,2,92,82,88,85',
-  '3,Arjun K,PYTHON_2026,3,60,65,58,60',
+  'rahul.s@example.com,Rahul Sharma,JAVA_FS_2026,1,88,75,72,70',
+  'priya.p@example.com,Priya Patel,REACT_2026,2,92,82,88,85',
+  'arjun.k@example.com,Arjun K,PYTHON_2026,3,60,65,58,60',
 ];
 
 export default function CsvUpload() {
@@ -88,12 +88,33 @@ export default function CsvUpload() {
       </motion.div>
       <motion.div variants={iV} className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
         <Card>
-          <motion.div className="border-2 border-dashed border-surface0/60 rounded-2xl p-6 sm:p-12 lg:p-14 text-center cursor-pointer transition-all hover:border-blue/40 hover:bg-blue/3 overflow-hidden"
+          <motion.div className={`border-2 border-dashed rounded-2xl p-6 sm:p-12 lg:p-14 text-center cursor-pointer transition-all overflow-hidden ${
+            selectedFile ? 'border-green/40 bg-green/3' : 'border-surface0/60 hover:border-blue/40 hover:bg-blue/3'
+          }`}
             whileHover={{ scale: 1.01 }} onClick={handleBrowse}>
-            <FileArrowUp size={56} weight="duotone" className="mx-auto mb-5 text-overlay1" />
-            <p className="text-base text-subtext1 mb-2 font-medium">Drop your CSV file here or click to browse</p>
-            <p className="text-xs text-overlay0 font-mono tracking-wide break-words px-2">{selectedFile ? selectedFile.name : 'choose_file.csv'} · Max 10MB · UTF-8 encoded</p>
-            <p className="mt-3 text-[11px] text-overlay0 font-mono tracking-wide break-all leading-5 px-2">{csvHeader}</p>
+            {selectedFile ? (
+              <>
+                <CheckCircle size={48} weight="duotone" className="mx-auto mb-4 text-green" />
+                <p className="text-base text-text font-semibold mb-1 truncate px-2">{selectedFile.name}</p>
+                <p className="text-xs text-overlay0 font-mono tracking-wide mb-3">
+                  {(selectedFile.size / 1024).toFixed(1)} KB · Ready to upload
+                </p>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                  className="text-[11px] text-red font-semibold hover:text-red/80 transition-colors cursor-pointer"
+                >
+                  Remove file
+                </button>
+              </>
+            ) : (
+              <>
+                <FileArrowUp size={56} weight="duotone" className="mx-auto mb-5 text-overlay1" />
+                <p className="text-base text-subtext1 mb-2 font-medium">Drop your CSV file here or click to browse</p>
+                <p className="text-xs text-overlay0 font-mono tracking-wide break-words px-2">choose_file.csv · Max 10MB · UTF-8 encoded</p>
+                <p className="mt-3 text-[11px] text-overlay0 font-mono tracking-wide break-all leading-5 px-2">{csvHeader}</p>
+              </>
+            )}
             <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleFileChange} />
           </motion.div>
           <div className="mt-8 flex gap-4 items-center flex-wrap">
@@ -107,9 +128,9 @@ export default function CsvUpload() {
             </button>
           </div>
           {message || error ? (
-            <div className={`mt-8 flex items-center gap-3 px-5 py-4 rounded-xl text-sm ${error ? 'bg-red/8 border border-red/20 text-red-200' : 'bg-green/8 border border-green/20 text-green'}`}>
-              <CheckCircle size={22} weight="fill" />
-              <span>{error ?? message}</span>
+            <div className={`mt-8 flex items-start gap-3 px-5 py-4 rounded-xl text-sm ${error ? 'bg-red/8 border border-red/20 text-red-200' : 'bg-green/8 border border-green/20 text-green'}`}>
+              <CheckCircle size={22} weight="fill" className="shrink-0 mt-0.5" />
+              <div className="whitespace-pre-wrap font-mono text-xs leading-5 w-full overflow-x-auto">{error ?? message}</div>
             </div>
           ) : null}
         </Card>

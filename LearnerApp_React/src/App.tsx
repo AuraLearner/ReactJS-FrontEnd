@@ -11,6 +11,9 @@ import Assessment from './screens/Assessment';
 import AiPrediction from './screens/AiPrediction';
 import Analytics from './screens/Analytics';
 import Notifications from './screens/Notifications';
+import LearnerDashboard from './screens/LearnerDashboard';
+import Assignments from './screens/Assignments';
+import Settings from './screens/Settings';
 import { clearAuthSession, getStoredRole, getStoredToken } from './utils/api';
 import { getHomeScreenForRole, getSessionRole, isScreenAccessible } from './utils/rbac';
 
@@ -71,6 +74,9 @@ export default function App() {
       case 'prediction': return <AiPrediction />;
       case 'analytics': return <Analytics />;
       case 'notifications': return <Notifications />;
+      case 'learner': return <LearnerDashboard />;
+      case 'assignments': return <Assignments />;
+      case 'settings': return <Settings />;
     }
   };
 

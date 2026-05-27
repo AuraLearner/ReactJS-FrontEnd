@@ -50,6 +50,7 @@ export default function Notifications() {
 
     const socket: Socket = io('https://auralearnernotifications.azaken.com', {
       auth: { token },
+      transports: ['websocket'],
     });
 
     const handleConnect = () => {

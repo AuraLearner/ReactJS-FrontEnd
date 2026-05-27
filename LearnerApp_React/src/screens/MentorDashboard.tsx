@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { UsersThree, Target, Warning, MagnifyingGlass, FunnelSimple, PencilSimple } from '@phosphor-icons/react';
+import { UsersThree, Target, Warning, MagnifyingGlass, FunnelSimple, PencilSimple, X as XIcon, Check } from '@phosphor-icons/react';
 import SectionHeader from '../components/SectionHeader';
 import StatCard from '../components/StatCard';
 import Card from '../components/Card';
@@ -40,9 +40,9 @@ function isPlacementReady(learner: LearnerRecord): boolean {
 function calculateReadiness(learner: LearnerRecord): number {
   return Math.round(
     learner.attendance * 0.25
-      + learner.codingScore * 0.35
-      + learner.aptitudeScore * 0.15
-      + learner.communicationScore * 0.25,
+    + learner.codingScore * 0.35
+    + learner.aptitudeScore * 0.15
+    + learner.communicationScore * 0.25,
   );
 }
 
@@ -64,7 +64,6 @@ function derivePrediction(learner: LearnerRecord): { label: string; variant: Pre
   return { label: `${readiness}% At Risk`, variant: 'red' };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Tip = ({ active, payload, label }: any) => {
   if (active && payload?.length) {
     return (<div className="bg-base border border-surface1 rounded-xl px-4 py-3 shadow-xl">
@@ -75,11 +74,23 @@ const Tip = ({ active, payload, label }: any) => {
   return null;
 };
 
+type FilterState = {
+  batch: string;
+  prediction: string;
+};
+
+type EditingLearner = LearnerRecord & { isSaving?: boolean };
+
 export default function MentorDashboard() {
   const [learners, setLearners] = useState<LearnerRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filters, setFilters] = useState<FilterState>({ batch: '', prediction: '' });
+  const [editingLearner, setEditingLearner] = useState<EditingLearner | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const filterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -112,6 +123,17 @@ export default function MentorDashboard() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setFilterOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const userRole = getStoredRole().trim().toUpperCase();
   const mentorUserId = getStoredUserId();
 
@@ -120,13 +142,29 @@ export default function MentorDashboard() {
     : learners;
 
   const query = searchQuery.trim().toLowerCase();
-  const visibleLearners = query
-    ? scopedLearners.filter((learner) => (
-      learner.name.toLowerCase().includes(query)
-      || learner.batch.toLowerCase().includes(query)
-      || String(learner.learnerId).includes(query)
-    ))
-    : scopedLearners;
+  const allBatches = Array.from(new Set(scopedLearners.map((l) => l.batch).filter(Boolean))).sort();
+
+  const visibleLearners = scopedLearners.filter((learner) => {
+    if (query && !learner.name.toLowerCase().includes(query)
+      && !learner.batch.toLowerCase().includes(query)
+      && !String(learner.learnerId).includes(query)) {
+      return false;
+    }
+
+    if (filters.batch && learner.batch !== filters.batch) {
+      return false;
+    }
+
+    if (filters.prediction) {
+      const pred = derivePrediction(learner);
+      const predKey = pred.variant;
+      if (filters.prediction === 'ready' && predKey !== 'green') return false;
+      if (filters.prediction === 'moderate' && predKey !== 'amber') return false;
+      if (filters.prediction === 'at-risk' && predKey !== 'red') return false;
+    }
+
+    return true;
+  });
 
   const totalLearners = visibleLearners.length;
   const readyLearners = visibleLearners.filter(isPlacementReady).length;
@@ -207,9 +245,60 @@ export default function MentorDashboard() {
                   onChange={(event) => setSearchQuery(event.target.value)}
                 />
               </div>
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-subtext0 border border-surface0/60 hover:text-text hover:border-surface1 transition-colors cursor-pointer">
-                <FunnelSimple size={14} /> Filter
-              </button>
+              <div ref={filterRef} className="relative">
+                <button
+                  onClick={() => setFilterOpen(!filterOpen)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${filters.batch || filters.prediction
+                    ? 'text-blue border-blue/40 bg-blue/8'
+                    : 'text-subtext0 border-surface0/60 hover:text-text hover:border-surface1'
+                    }`}
+                >
+                  <FunnelSimple size={14} /> Filter
+                  {(filters.batch || filters.prediction) ? (
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue" />
+                  ) : null}
+                </button>
+                <AnimatePresence>
+                  {filterOpen ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 z-50 mt-2 w-[240px] bg-mantle border border-surface0/70 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] p-4"
+                    >
+                      <div className="mb-3">
+                        <label className="text-[10px] font-mono font-semibold text-overlay0 tracking-widest uppercase mb-2 block">Batch</label>
+                        <select
+                          value={filters.batch}
+                          onChange={(e) => setFilters((prev) => ({ ...prev, batch: e.target.value }))}
+                          className="w-full px-3 py-2 bg-base border border-surface0/60 rounded-lg text-text text-xs appearance-none cursor-pointer"
+                        >
+                          <option value="">All Batches</option>
+                          {allBatches.map((b) => <option key={b} value={b}>{b}</option>)}
+                        </select>
+                      </div>
+                      <div className="mb-4">
+                        <label className="text-[10px] font-mono font-semibold text-overlay0 tracking-widest uppercase mb-2 block">Prediction</label>
+                        <select
+                          value={filters.prediction}
+                          onChange={(e) => setFilters((prev) => ({ ...prev, prediction: e.target.value }))}
+                          className="w-full px-3 py-2 bg-base border border-surface0/60 rounded-lg text-text text-xs appearance-none cursor-pointer"
+                        >
+                          <option value="">All Statuses</option>
+                          <option value="ready">Placement Ready</option>
+                          <option value="moderate">Moderate</option>
+                          <option value="at-risk">At Risk</option>
+                        </select>
+                      </div>
+                      <button
+                        onClick={() => { setFilters({ batch: '', prediction: '' }); setFilterOpen(false); }}
+                        className="w-full text-center text-[11px] font-semibold text-overlay0 hover:text-text transition-colors cursor-pointer py-1"
+                      >Clear Filters</button>
+                    </motion.div>
+                  ) : null}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
           <div className="overflow-x-auto -mx-4 sm:-mx-6 lg:-mx-9 px-4 sm:px-6 lg:px-9">
@@ -235,26 +324,27 @@ export default function MentorDashboard() {
                     .toUpperCase() || 'AL';
 
                   return (
-                  <tr key={l.learnerId} className="hover:bg-base/40 transition-colors group">
-                    <td className="px-4 lg:px-5 py-5 lg:py-6 border-b border-surface0/25">
-                      <div className="flex items-center gap-4">
-                        <div className="w-11 h-11 rounded-xl bg-blue/12 text-blue text-xs font-bold flex items-center justify-center shrink-0">{initials}</div>
-                        <span className="text-sm text-text font-semibold">{l.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 lg:px-5 py-5 lg:py-6 border-b border-surface0/25 min-w-[130px]"><ScoreBar value={l.codingScore} color="bg-blue" /></td>
-                    <td className="px-4 lg:px-5 py-5 lg:py-6 border-b border-surface0/25 min-w-[130px]"><ScoreBar value={l.aptitudeScore} color="bg-mauve" /></td>
-                    <td className="px-4 lg:px-5 py-5 lg:py-6 border-b border-surface0/25 min-w-[130px]"><ScoreBar value={l.communicationScore} color="bg-green" /></td>
-                    <td className="px-4 lg:px-5 py-5 lg:py-6 border-b border-surface0/25 min-w-[130px]"><ScoreBar value={l.mockInterview} color="bg-peach" /></td>
-                    <td className="px-4 lg:px-5 py-5 lg:py-6 border-b border-surface0/25"><Badge variant={l.predictionVariant}>{l.prediction}</Badge></td>
-                    <td className="px-4 lg:px-5 py-5 lg:py-6 border-b border-surface0/25">
-                      <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-peach text-crust cursor-pointer shadow-[0_2px_10px_rgba(250,179,135,0.15)]">
-                        <PencilSimple size={14} weight="bold" /> Update
-                      </motion.button>
-                    </td>
-                  </tr>
-                );
+                    <tr key={l.learnerId} className="hover:bg-base/40 transition-colors group">
+                      <td className="px-4 lg:px-5 py-5 lg:py-6 border-b border-surface0/25">
+                        <div className="flex items-center gap-4">
+                          <div className="w-11 h-11 rounded-xl bg-blue/12 text-blue text-xs font-bold flex items-center justify-center shrink-0">{initials}</div>
+                          <span className="text-sm text-text font-semibold">{l.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 lg:px-5 py-5 lg:py-6 border-b border-surface0/25 min-w-[130px]"><ScoreBar value={l.codingScore} color="bg-blue" /></td>
+                      <td className="px-4 lg:px-5 py-5 lg:py-6 border-b border-surface0/25 min-w-[130px]"><ScoreBar value={l.aptitudeScore} color="bg-mauve" /></td>
+                      <td className="px-4 lg:px-5 py-5 lg:py-6 border-b border-surface0/25 min-w-[130px]"><ScoreBar value={l.communicationScore} color="bg-green" /></td>
+                      <td className="px-4 lg:px-5 py-5 lg:py-6 border-b border-surface0/25 min-w-[130px]"><ScoreBar value={l.mockInterview} color="bg-peach" /></td>
+                      <td className="px-4 lg:px-5 py-5 lg:py-6 border-b border-surface0/25"><Badge variant={l.predictionVariant}>{l.prediction}</Badge></td>
+                      <td className="px-4 lg:px-5 py-5 lg:py-6 border-b border-surface0/25">
+                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                          onClick={() => { setEditingLearner({ ...l, isSaving: false }); setUpdateError(null); }}
+                          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-peach text-crust cursor-pointer shadow-[0_2px_10px_rgba(250,179,135,0.15)]">
+                          <PencilSimple size={14} weight="bold" /> Update
+                        </motion.button>
+                      </td>
+                    </tr>
+                  );
                 }) : (
                   <tr>
                     <td className="px-4 lg:px-5 py-8 text-sm text-overlay0 border-b border-surface0/25" colSpan={7}>
@@ -321,6 +411,91 @@ export default function MentorDashboard() {
           {error}
         </motion.div>
       ) : null}
+
+      <AnimatePresence>
+        {editingLearner ? (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-crust/70 backdrop-blur-sm px-4"
+            onClick={() => setEditingLearner(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-mantle border border-surface0/60 rounded-2xl p-6 sm:p-8 shadow-[0_16px_64px_rgba(0,0,0,0.5)]"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-display text-lg font-bold text-text">Update Scores</h3>
+                <button onClick={() => setEditingLearner(null)} className="text-overlay0 hover:text-text transition-colors cursor-pointer"><XIcon size={18} /></button>
+              </div>
+              <p className="text-sm text-subtext0 mb-6">Editing <strong className="text-text">{editingLearner.name}</strong> · ID {editingLearner.learnerId}</p>
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                {[
+                  { key: 'codingScore' as const, label: 'Coding Score' },
+                  { key: 'aptitudeScore' as const, label: 'Aptitude Score' },
+                  { key: 'communicationScore' as const, label: 'Communication' },
+                  { key: 'attendance' as const, label: 'Attendance %' },
+                ].map((field) => (
+                  <div key={field.key}>
+                    <label className="text-[10px] font-mono font-semibold text-overlay0 tracking-widest uppercase mb-2 block">{field.label}</label>
+                    <input
+                      type="number" min="0" max="100"
+                      value={editingLearner[field.key]}
+                      onChange={(e) => setEditingLearner((prev) => prev ? { ...prev, [field.key]: Number(e.target.value) || 0 } : null)}
+                      className="w-full px-3 py-2.5 bg-base border border-surface0/60 rounded-xl text-text text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+              {updateError ? (
+                <div className="mb-4 rounded-xl border border-red/20 bg-red/10 px-4 py-2 text-xs text-red-200">{updateError}</div>
+              ) : null}
+              <div className="flex gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                  disabled={editingLearner.isSaving}
+                  onClick={async () => {
+                    setEditingLearner((prev) => prev ? { ...prev, isSaving: true } : null);
+                    setUpdateError(null);
+                    try {
+                      await apiRequest(`/api/learners/${editingLearner.learnerId}`, {
+                        method: 'PUT',
+                        body: {
+                          name: editingLearner.name,
+                          batch: editingLearner.batch,
+                          mentorId: editingLearner.mentorId,
+                          attendance: editingLearner.attendance,
+                          codingScore: editingLearner.codingScore,
+                          aptitudeScore: editingLearner.aptitudeScore,
+                          communicationScore: editingLearner.communicationScore,
+                        },
+                      });
+                      setLearners((prev) => prev.map((l) => l.learnerId === editingLearner.learnerId ? {
+                        ...l,
+                        attendance: editingLearner.attendance,
+                        codingScore: editingLearner.codingScore,
+                        aptitudeScore: editingLearner.aptitudeScore,
+                        communicationScore: editingLearner.communicationScore,
+                      } : l));
+                      setEditingLearner(null);
+                    } catch (saveError) {
+                      setUpdateError(saveError instanceof Error ? saveError.message : 'Failed to save');
+                      setEditingLearner((prev) => prev ? { ...prev, isSaving: false } : null);
+                    }
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold bg-green text-crust cursor-pointer disabled:opacity-60"
+                >
+                  <Check size={16} weight="bold" /> {editingLearner.isSaving ? 'Saving…' : 'Save Changes'}
+                </motion.button>
+                <button
+                  onClick={() => setEditingLearner(null)}
+                  className="px-5 py-3 rounded-xl text-sm font-semibold text-subtext0 border border-surface0/60 hover:text-text transition-colors cursor-pointer"
+                >Cancel</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </motion.div>
   );
 }

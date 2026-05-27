@@ -2,14 +2,15 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   SignIn, ChartBar, UserPlus, UploadSimple, ChalkboardTeacher,
-  Exam, Brain, ChartLine, Bell, List, X, SignOut
+  Exam, Brain, ChartLine, Bell, List, X, SignOut, Student, ClipboardText, Gear
 } from '@phosphor-icons/react';
 import { getStoredRole, getStoredToken } from '../utils/api';
 import { getVisibleScreensForRole } from '../utils/rbac';
 
 export type ScreenId =
   | 'login' | 'admin' | 'addlearner' | 'csvupload' | 'mentor'
-  | 'assessment' | 'prediction' | 'analytics' | 'notifications';
+  | 'assessment' | 'prediction' | 'analytics' | 'notifications'
+  | 'learner' | 'assignments' | 'settings';
 
 interface NavTab { id: ScreenId; label: string; icon: React.ReactNode; }
 
@@ -20,9 +21,12 @@ const tabs: NavTab[] = [
   { id: 'csvupload', label: 'CSV Upload', icon: <UploadSimple size={16} /> },
   { id: 'mentor', label: 'Mentor', icon: <ChalkboardTeacher size={16} /> },
   { id: 'assessment', label: 'Assessment', icon: <Exam size={16} /> },
+  { id: 'learner', label: 'My Dashboard', icon: <Student size={16} /> },
+  { id: 'assignments', label: 'Assignments', icon: <ClipboardText size={16} /> },
   { id: 'prediction', label: 'AI Predict', icon: <Brain size={16} /> },
   { id: 'analytics', label: 'Analytics', icon: <ChartLine size={16} /> },
   { id: 'notifications', label: 'Alerts', icon: <Bell size={16} /> },
+  { id: 'settings', label: 'Settings', icon: <Gear size={16} /> },
 ];
 
 interface NavbarProps { activeScreen: ScreenId; onNavigate: (id: ScreenId) => void; }

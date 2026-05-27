@@ -146,7 +146,7 @@ export default function AdminDashboard({ onNavigate }: Props) {
               <h2 className="font-display text-xl sm:text-2xl font-bold mb-1">Batch Overview</h2>
               <p className="text-xs text-overlay0 font-mono tracking-wide">Ready learner ratio by batch</p>
             </div>
-            <button className="px-4 py-2 rounded-xl text-xs font-semibold text-subtext0 border border-surface0/60 hover:text-text hover:border-surface1 transition-colors cursor-pointer">View All</button>
+            <button onClick={() => onNavigate('mentor')} className="px-4 py-2 rounded-xl text-xs font-semibold text-subtext0 border border-surface0/60 hover:text-text hover:border-surface1 transition-colors cursor-pointer">View All</button>
           </div>
           <div className="overflow-x-auto -mx-4 sm:-mx-6 lg:-mx-9 px-4 sm:px-6 lg:px-9">
             <table className="w-full border-collapse min-w-[400px]">

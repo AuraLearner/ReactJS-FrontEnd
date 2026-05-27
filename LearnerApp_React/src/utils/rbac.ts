@@ -6,13 +6,13 @@ export type AppRole = 'ADMIN' | 'MENTOR' | 'LEARNER';
 const HOME_SCREEN_BY_ROLE: Record<AppRole, ScreenId> = {
   ADMIN: 'admin',
   MENTOR: 'mentor',
-  LEARNER: 'prediction',
+  LEARNER: 'learner',
 };
 
 const VISIBLE_SCREENS_BY_ROLE: Record<AppRole, ScreenId[]> = {
-  ADMIN: ['admin', 'addlearner', 'csvupload', 'mentor', 'assessment', 'prediction', 'analytics', 'notifications'],
-  MENTOR: ['mentor', 'assessment', 'prediction', 'analytics', 'notifications'],
-  LEARNER: ['prediction', 'notifications'],
+  ADMIN: ['admin', 'addlearner', 'csvupload', 'mentor', 'assessment', 'prediction', 'analytics', 'notifications', 'settings'],
+  MENTOR: ['mentor', 'assessment', 'prediction', 'analytics', 'notifications', 'settings'],
+  LEARNER: ['learner', 'assignments', 'prediction', 'notifications', 'settings'],
 };
 
 export function normalizeRole(role: string | null | undefined): AppRole | null {

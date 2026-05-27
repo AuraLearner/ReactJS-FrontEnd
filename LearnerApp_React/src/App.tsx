@@ -15,6 +15,8 @@ import LearnerDashboard from './screens/LearnerDashboard';
 import Assignments from './screens/Assignments';
 import Settings from './screens/Settings';
 import PendingApprovals from './screens/PendingApprovals';
+import { ToastProvider } from './components/ToastContext';
+import NotificationListener from './components/NotificationListener';
 import { clearAuthSession, getStoredRole, getStoredToken } from './utils/api';
 import { getHomeScreenForRole, getSessionRole, isScreenAccessible } from './utils/rbac';
 
@@ -83,16 +85,19 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-crust">
-      <Navbar activeScreen={activeScreen} onNavigate={setActiveScreen} onLogout={handleLogout} />
-      <AnimatePresence mode="wait">
-        <motion.main
-          key={activeScreen}
-          {...pageTransition}
-        >
-          {renderScreen()}
-        </motion.main>
-      </AnimatePresence>
-    </div>
+    <ToastProvider>
+      <NotificationListener />
+      <div className="min-h-screen bg-crust">
+        <Navbar activeScreen={activeScreen} onNavigate={setActiveScreen} onLogout={handleLogout} />
+        <AnimatePresence mode="wait">
+          <motion.main
+            key={activeScreen}
+            {...pageTransition}
+          >
+            {renderScreen()}
+          </motion.main>
+        </AnimatePresence>
+      </div>
+    </ToastProvider>
   );
 }

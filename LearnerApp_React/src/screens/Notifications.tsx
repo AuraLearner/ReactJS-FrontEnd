@@ -70,10 +70,12 @@ export default function Notifications() {
     socket.on('connect_error', handleConnectError);
 
     // Listen to real-time events from Spring Boot (via NodeJS)
+    socket.on('newRegistration', (data) => addNotif(<Bell size={18} weight="duotone" className="text-blue" />, `New Registration: ${data.message || 'Learner awaiting approval'}`, 'blue', 'Admin'));
     socket.on('newAssessment', (data) => addNotif(<Bell size={18} weight="duotone" className="text-blue" />, `New Assessment: ${data.type || 'Added'}`, 'blue', 'New'));
     socket.on('scoreUpdated', (data) => addNotif(<Lightning size={18} weight="duotone" className="text-green" />, `Score Updated for Learner ${data.learnerId || ''}`, 'green', 'Score'));
     socket.on('predictionGenerated', (data) => addNotif(<Brain size={18} weight="duotone" className="text-mauve" />, `Prediction updated: ${data.status || 'Ready'}`, 'mauve', 'AI'));
     socket.on('mentorFeedback', () => addNotif(<ChatCircle size={18} weight="duotone" className="text-peach" />, `New Feedback added by Mentor`, 'amber', 'Feedback'));
+    socket.on('bulkUploadComplete', (data) => addNotif(<Bell size={18} weight="duotone" className="text-green" />, `Bulk Upload Complete: ${data.message || 'Batch processed'}`, 'green', 'Admin'));
 
     return () => {
       socket.off('connect', handleConnect);

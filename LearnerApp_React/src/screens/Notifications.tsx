@@ -13,12 +13,14 @@ const iV = { hidden: { opacity: 0, y: 18 }, visible: { opacity: 1, y: 0, transit
 
 
 type NotificationItem = {
+  id: number | string;
   icon: ReactNode;
   title: string;
   time: string;
   badge: string;
   v: 'blue' | 'green' | 'amber' | 'mauve';
   targetScreen?: string;
+  isRead?: boolean;
 };
 
 const initialNotifications: NotificationItem[] = [];
@@ -36,8 +38,39 @@ export default function Notifications({ onNavigate }: { onNavigate?: (screen: an
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
   const addNotif = (icon: ReactNode, title: string, v: 'blue' | 'green' | 'amber' | 'mauve', badge: string, targetScreen?: string) => {
-    const newItem = { icon, title, time: new Date().toLocaleTimeString(), badge, v, targetScreen };
-    setNotifications((prev) => [newItem, ...prev].slice(0, 10)); // Keep last 10
+    const newItem: NotificationItem = { id: `local_${Date.now()}`, icon, title, time: new Date().toLocaleTimeString(), badge, v, targetScreen, isRead: false };
+    setNotifications((prev) => {
+      const filtered = prev.filter(n => typeof n.id === 'string' ? n.title !== title : true);
+      return [newItem, ...filtered].slice(0, 50);
+    });
+  };
+
+  const handleDismiss = async (e: React.MouseEvent, id: number | string) => {
+    e.stopPropagation(); // prevent navigation
+    setNotifications(prev => prev.filter(n => n.id !== id));
+    
+    if (typeof id === 'number') {
+      try {
+        await fetch(`https://auralearnernotifications.azaken.com/notifications/${id}`, { method: 'DELETE' });
+      } catch (err) {
+        console.error('Failed to dismiss', err);
+      }
+    }
+  };
+
+  const handleNotificationClick = async (n: NotificationItem) => {
+    if (!n.isRead && typeof n.id === 'number') {
+      setNotifications(prev => prev.map(p => p.id === n.id ? { ...p, isRead: true } : p));
+      try {
+        await fetch(`https://auralearnernotifications.azaken.com/notifications/${n.id}/read`, { method: 'PATCH' });
+      } catch (err) {
+        console.error('Failed to mark read', err);
+      }
+    }
+    
+    if (n.targetScreen && onNavigate) {
+      onNavigate(n.targetScreen);
+    }
   };
 
   useEffect(() => {
@@ -81,18 +114,22 @@ export default function Notifications({ onNavigate }: { onNavigate?: (screen: an
             }
 
             return {
+              id: n.id,
               icon: <Bell size={18} weight="duotone" className={isNewRegistration || isAssessment ? 'text-blue' : 'text-green'} />,
               title,
               time: new Date(n.created_at).toLocaleTimeString(),
               badge: isNewRegistration ? 'Admin' : isAssessment ? 'New' : isFeedback ? 'Feedback' : 'Event',
               v: isNewRegistration || isAssessment ? 'blue' : isFeedback ? 'amber' : 'green',
-              targetScreen: isNewRegistration ? 'pending' : undefined
+              targetScreen: isNewRegistration ? 'pending' : undefined,
+              isRead: n.is_read
             };
           });
           
           setNotifications(prev => {
             // Keep real-time ones that might have arrived before fetch finished
-            return [...prev, ...mapped].slice(0, 50);
+            // and merge without duplicating IDs
+            const localOnly = prev.filter(p => typeof p.id === 'string');
+            return [...localOnly, ...mapped].slice(0, 50);
           });
         }
       } catch (err) {
@@ -158,17 +195,25 @@ export default function Notifications({ onNavigate }: { onNavigate?: (screen: an
           ) : null}
           <div className="space-y-2">
             {notifications.length > 0 ? notifications.map((n, i) => (
-              <motion.div key={i}
-                onClick={() => { if (n.targetScreen && onNavigate) onNavigate(n.targetScreen); }}
-                className={`flex gap-4 lg:gap-5 items-start p-4 lg:p-5 rounded-2xl transition-all ${n.targetScreen ? 'cursor-pointer hover:bg-surface0/60 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:-translate-y-0.5 border border-transparent hover:border-surface1' : 'hover:bg-base/50'}`}
+              <motion.div key={n.id || i}
+                onClick={() => handleNotificationClick(n)}
+                className={`flex gap-4 lg:gap-5 items-start p-4 lg:p-5 rounded-2xl transition-all relative ${n.targetScreen ? 'cursor-pointer hover:bg-surface0/60 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:-translate-y-0.5 border border-transparent hover:border-surface1' : 'hover:bg-base/50'} ${!n.isRead ? 'bg-blue/5' : ''}`}
                 initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.12, duration: 0.35 }}>
+                {!n.isRead && (
+                  <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-blue shadow-[0_0_8px_rgba(137,180,250,0.6)]" />
+                )}
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${n.targetScreen ? 'bg-blue/10 text-blue' : 'bg-surface0/40'}`}>{n.icon}</div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium leading-relaxed ${n.targetScreen ? 'text-text group-hover:text-blue transition-colors' : 'text-text'}`}>{n.title}</p>
+                <div className="flex-1 min-w-0 pr-8">
+                  <p className={`text-sm font-medium leading-relaxed ${n.targetScreen ? 'text-text group-hover:text-blue transition-colors' : 'text-text'} ${!n.isRead ? 'font-bold' : ''}`}>{n.title}</p>
                   <p className="text-[10px] text-overlay0 font-mono mt-2 tracking-wide">{n.time}</p>
                 </div>
-                <Badge variant={n.v}>{n.badge}</Badge>
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <button onClick={(e) => handleDismiss(e, n.id)} className="p-1 text-overlay0 hover:text-red hover:bg-red/10 rounded-md transition-colors absolute top-3 right-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path></svg>
+                  </button>
+                  <Badge variant={n.v} className="mt-6">{n.badge}</Badge>
+                </div>
               </motion.div>
             )) : (
               <div className="rounded-2xl border border-dashed border-surface0/50 bg-base/20 px-5 py-6 text-sm text-overlay0">

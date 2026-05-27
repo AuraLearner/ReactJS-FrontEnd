@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   SignIn, ChartBar, UserPlus, UploadSimple, ChalkboardTeacher,
@@ -30,14 +30,34 @@ const tabs: NavTab[] = [
   { id: 'settings', label: 'Settings', icon: <Gear size={16} /> },
 ];
 
-interface NavbarProps { activeScreen: ScreenId; onNavigate: (id: ScreenId) => void; }
 interface NavbarProps { activeScreen: ScreenId; onNavigate: (id: ScreenId) => void; onLogout: () => void; }
 
 export default function Navbar({ activeScreen, onNavigate, onLogout }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const token = getStoredToken();
   const sessionRole = getStoredRole();
   const visibleTabs = token ? getVisibleScreensForRole(sessionRole) : ['login'];
+
+  useEffect(() => {
+    if (!token || !visibleTabs.includes('notifications')) return;
+    
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch(`https://auralearnernotifications.azaken.com/notifications/unread-count?role=${sessionRole || 'ADMIN'}`);
+        if (res.ok) {
+          const data = await res.json();
+          setUnreadCount(data.count || 0);
+        }
+      } catch (err) {
+        console.error('Failed to fetch unread count', err);
+      }
+    };
+    
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 15000); // Check every 15s
+    return () => clearInterval(interval);
+  }, [token, sessionRole, activeScreen]); // Re-fetch when switching tabs too
 
   return (
     <nav className="sticky top-0 z-50 bg-crust/80 backdrop-blur-2xl border-b border-surface0/50">
@@ -64,12 +84,17 @@ export default function Navbar({ activeScreen, onNavigate, onLogout }: NavbarPro
                 }`}
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
                 <span className="shrink-0">{tab.icon}</span>
-                <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ease-out ${
+                <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ease-out flex items-center gap-2 ${
                   activeScreen === tab.id 
                     ? 'max-w-[120px] ml-2 opacity-100' 
                     : 'max-w-0 opacity-0 group-hover:max-w-[120px] group-hover:ml-2 group-hover:opacity-100'
                 }`}>
                   {tab.label}
+                  {tab.id === 'notifications' && unreadCount > 0 && (
+                    <span className="bg-red flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-crust shadow-sm">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
                 </span>
               </motion.button>
             ))}
@@ -89,8 +114,11 @@ export default function Navbar({ activeScreen, onNavigate, onLogout }: NavbarPro
 
           {/* Mobile Menu Button */}
           <button onClick={() => setMobileOpen(!mobileOpen)}
-            className="lg:hidden p-2 rounded-xl text-subtext0 hover:text-text hover:bg-surface0/40 transition-colors cursor-pointer">
+            className="lg:hidden relative p-2 rounded-xl text-subtext0 hover:text-text hover:bg-surface0/40 transition-colors cursor-pointer">
             {mobileOpen ? <X size={22} /> : <List size={22} />}
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red ring-2 ring-crust" />
+            )}
           </button>
         </div>
       </div>
@@ -110,7 +138,12 @@ export default function Navbar({ activeScreen, onNavigate, onLogout }: NavbarPro
                       ? 'text-blue bg-blue/10 border border-blue/20'
                       : 'text-overlay1 hover:text-text hover:bg-surface0/40 border border-transparent'
                   }`}>
-                  {tab.icon}
+                  <div className="relative">
+                    {tab.icon}
+                    {tab.id === 'notifications' && unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red ring-1 ring-crust" />
+                    )}
+                  </div>
                   <span>{tab.label}</span>
                 </button>
               ))}

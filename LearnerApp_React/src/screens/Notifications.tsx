@@ -6,7 +6,7 @@ import { Bell, Lightning, Brain, ChatCircle, Circle } from '@phosphor-icons/reac
 import SectionHeader from '../components/SectionHeader';
 import Card from '../components/Card';
 import Badge from '../components/Badge';
-import { getStoredToken } from '../utils/api';
+import { getStoredToken, getStoredRole } from '../utils/api';
 
 const cV = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const iV = { hidden: { opacity: 0, y: 18 }, visible: { opacity: 1, y: 0, transition: { duration: 0.45 } } };
@@ -52,6 +52,53 @@ export default function Notifications() {
       auth: { token },
       transports: ['websocket'],
     });
+
+    // Fetch historical notifications
+    const fetchHistory = async () => {
+      try {
+        const role = getStoredRole();
+        // Fallback to fetch all or use the role we have
+        const res = await fetch(`https://auralearnernotifications.azaken.com/notifications?role=${role || 'ADMIN'}`);
+        if (!res.ok) throw new Error('Failed to fetch history');
+        const data = await res.json();
+        
+        if (data.notifications && Array.isArray(data.notifications)) {
+          const mapped = data.notifications.map((n: any) => {
+            const isNewRegistration = n.event_type === 'newRegistration';
+            const isAssessment = n.event_type === 'newAssessment';
+            const isFeedback = n.event_type === 'mentorFeedback';
+            const isUpload = n.event_type === 'bulkUploadComplete';
+
+            let title = 'New Event';
+            if (n.data) {
+              const parsed = typeof n.data === 'string' ? JSON.parse(n.data) : n.data;
+              if (isNewRegistration) title = `New Registration: ${parsed.message || 'Learner awaiting approval'}`;
+              else if (isAssessment) title = `New Assessment: ${parsed.type || 'Added'}`;
+              else if (isFeedback) title = `New Feedback added by Mentor`;
+              else if (isUpload) title = `Bulk Upload Complete: ${parsed.message || 'Batch processed'}`;
+              else if (parsed.message) title = parsed.message;
+            }
+
+            return {
+              icon: <Bell size={18} weight="duotone" className={isNewRegistration || isAssessment ? 'text-blue' : 'text-green'} />,
+              title,
+              time: new Date(n.created_at).toLocaleTimeString(),
+              badge: isNewRegistration ? 'Admin' : isAssessment ? 'New' : isFeedback ? 'Feedback' : 'Event',
+              v: isNewRegistration || isAssessment ? 'blue' : isFeedback ? 'amber' : 'green'
+            };
+          });
+          
+          setNotifications(prev => {
+            // Keep real-time ones that might have arrived before fetch finished
+            return [...prev, ...mapped].slice(0, 50);
+          });
+        }
+      } catch (err) {
+        console.error('History fetch error:', err);
+      }
+    };
+
+    fetchHistory();
 
     const handleConnect = () => {
       setIsConnected(true);
